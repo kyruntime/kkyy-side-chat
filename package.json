@@ -1,0 +1,82 @@
+{
+	"name": "sidechat",
+	"displayName": "SideChat",
+	"description": "Cursor 侧栏多通道 MCP 面板：多窗口独立通道、持续轮询、支持截图粘贴。",
+	"version": "1.8.0",
+	"publisher": "kkyy",
+	"license": "MIT",
+	"keywords": [
+		"mcp",
+		"cursor",
+		"model context protocol",
+		"multi-session",
+		"sidebar",
+		"sidechat",
+		"side-chat",
+		"chat",
+		"check_messages"
+	],
+	"categories": [
+		"Other"
+	],
+	"engines": {
+		"vscode": "^1.71.0"
+	},
+	"main": "./dist/extension.js",
+	"activationEvents": [
+		"onView:sideChat.sidebar",
+		"onCommand:sideChat.sidebar.configureWorkspace",
+		"onCommand:sideChat.cleanupArtifacts"
+	],
+	"contributes": {
+		"commands": [
+			{
+				"command": "sideChat.sidebar.configureWorkspace",
+				"title": "配置工作区（MCP）",
+				"category": "SideChat"
+			},
+			{
+				"command": "sideChat.cleanupArtifacts",
+				"title": "彻底清理本机文件",
+				"category": "SideChat"
+			}
+		],
+		"viewsContainers": {
+			"activitybar": [
+				{
+					"id": "sidechat",
+					"title": "SideChat",
+					"icon": "resources/icon.svg"
+				}
+			]
+		},
+		"views": {
+			"sidechat": [
+				{
+					"type": "webview",
+					"id": "sideChat.sidebar",
+					"name": "SideChat"
+				}
+			]
+		}
+	},
+	"scripts": {
+		"compile": "tsc -p . && node -e \"const{getScript}=require('./dist/webview-script');const s=getScript('x',3,'darwin');require('fs').writeFileSync('/tmp/_sc_check.js',s)\" && node --check /tmp/_sc_check.js",
+		"watch": "tsc -p . -w",
+		"package": "vsce package --no-dependencies",
+		"vscode:uninstall": "node ./dist/uninstall.js",
+		"postinstall": "cd mcp-server && npm install"
+	},
+	"devDependencies": {
+		"@types/node": "^16.18.0",
+		"@types/vscode": "^1.71.0",
+		"ts-node": "^10.9.2",
+		"typescript": "^4.7.4",
+		"@vscode/vsce": "^3.7.0"
+	},
+	"__metadata": {
+		"installedTimestamp": 1774780160246,
+		"targetPlatform": "universal",
+		"size": 401564
+	}
+}

@@ -1,0 +1,11 @@
+.vscode/**
+.cursor/**
+src/**
+docs/**
+tools/**
+node_modules/**
+mcp-server/node_modules/**
+**/*.map
+**/*.vsix
+tsconfig.json
+sync-to-cursor.ps1

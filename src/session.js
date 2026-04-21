@@ -24,8 +24,8 @@ function setActiveWorkspace(wsPath) {
     RUNTIME_CONFIG_PATH = path.join(MESSAGE_QUEUE_ROOT_DIR, "config.json");
 }
 const DEFAULT_HEARTBEAT_INTERVAL_MS = 700;
-const DEFAULT_KEEPALIVE_TIMEOUT_MS = 10000;
-const HEARTBEAT_STALE_AFTER_MS = 35000;
+const DEFAULT_KEEPALIVE_TIMEOUT_MS = 60000;
+const HEARTBEAT_STALE_AFTER_MS = 90000;
 function isValidSessionId(id) {
     const n = parseInt(id, 10);
     return Number.isInteger(n) && n >= 1 && n <= MAX_SESSIONS && String(n) === id;

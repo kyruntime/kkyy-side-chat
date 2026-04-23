@@ -124,7 +124,7 @@ function readRuntimeConfig() {
 function readKeepaliveConfig() {
   const cfg = readRuntimeConfig();
   const heartbeatIntervalMs = Math.max(400, Number(cfg.heartbeatIntervalMs) || 700);
-  const keepaliveTimeoutMs = Math.max(2000, Number(cfg.keepaliveTimeoutMs) || 60000);
+  const keepaliveTimeoutMs = Math.max(2000, Number(cfg.keepaliveTimeoutMs) || 180000);
   return { heartbeatIntervalMs, keepaliveTimeoutMs };
 }
 

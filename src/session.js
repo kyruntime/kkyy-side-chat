@@ -24,7 +24,8 @@ function setActiveWorkspace(wsPath) {
     RUNTIME_CONFIG_PATH = path.join(MESSAGE_QUEUE_ROOT_DIR, "config.json");
 }
 const DEFAULT_HEARTBEAT_INTERVAL_MS = 700;
-const DEFAULT_KEEPALIVE_TIMEOUT_MS = 180000;
+const LEGACY_DEFAULT_KEEPALIVE_TIMEOUT_MS = 180000;
+const DEFAULT_KEEPALIVE_TIMEOUT_MS = 30 * 60 * 1000;
 const HEARTBEAT_STALE_AFTER_MS = 90000;
 function isValidSessionId(id) {
     const n = parseInt(id, 10);
@@ -215,11 +216,16 @@ function writeJsonFileSafe(filePath, data) {
 function ensureRuntimeConfig() {
     ensureQueueRootDir();
     const existing = readJsonFileSafe(RUNTIME_CONFIG_PATH, {});
+    const existingObj = (existing && typeof existing === "object" && !Array.isArray(existing)) ? existing : {};
     const next = {
         heartbeatIntervalMs: DEFAULT_HEARTBEAT_INTERVAL_MS,
         keepaliveTimeoutMs: DEFAULT_KEEPALIVE_TIMEOUT_MS,
-        ...((existing && typeof existing === "object" && !Array.isArray(existing)) ? existing : {}),
+        ...existingObj,
     };
+    const currentKeepaliveTimeoutMs = Number(existingObj.keepaliveTimeoutMs);
+    if (!Number.isFinite(currentKeepaliveTimeoutMs) || currentKeepaliveTimeoutMs <= 0 || currentKeepaliveTimeoutMs === LEGACY_DEFAULT_KEEPALIVE_TIMEOUT_MS) {
+        next.keepaliveTimeoutMs = DEFAULT_KEEPALIVE_TIMEOUT_MS;
+    }
     writeJsonFileSafe(RUNTIME_CONFIG_PATH, next);
     return next;
 }

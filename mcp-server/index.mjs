@@ -58,6 +58,9 @@ const heartbeatPath = join(queueDir, "heartbeat.json");
 const aiDonePath = join(queueDir, "ai_done.json");
 const configPath = join(queueRoot, "config.json");
 const logPath = join(queueDir, "server.log");
+const DEFAULT_HEARTBEAT_INTERVAL_MS = 700;
+const LEGACY_DEFAULT_KEEPALIVE_TIMEOUT_MS = 180000;
+const DEFAULT_KEEPALIVE_TIMEOUT_MS = 30 * 60 * 1000;
 
 // ── 日志 ──
 function logError(label, err) {
@@ -123,8 +126,16 @@ function readRuntimeConfig() {
 
 function readKeepaliveConfig() {
   const cfg = readRuntimeConfig();
-  const heartbeatIntervalMs = Math.max(400, Number(cfg.heartbeatIntervalMs) || 700);
-  const keepaliveTimeoutMs = Math.max(2000, Number(cfg.keepaliveTimeoutMs) || 180000);
+  const heartbeatIntervalMs = Math.max(400, Number(cfg.heartbeatIntervalMs) || DEFAULT_HEARTBEAT_INTERVAL_MS);
+  const configuredKeepaliveTimeoutMs = Number(cfg.keepaliveTimeoutMs);
+  const keepaliveTimeoutMs = Math.max(
+    2000,
+    Number.isFinite(configuredKeepaliveTimeoutMs) &&
+      configuredKeepaliveTimeoutMs > 0 &&
+      configuredKeepaliveTimeoutMs !== LEGACY_DEFAULT_KEEPALIVE_TIMEOUT_MS
+      ? configuredKeepaliveTimeoutMs
+      : DEFAULT_KEEPALIVE_TIMEOUT_MS
+  );
   return { heartbeatIntervalMs, keepaliveTimeoutMs };
 }
 

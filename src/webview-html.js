@@ -67,8 +67,14 @@ ${getStyles()}
     </details>
 
     <div id="connectionBanner" class="conn-banner">
-      <span>等待 Agent 连接</span>
-      <span class="conn-hint">在 Cursor 对话中输入：<code id="bannerHintCode">请使用 sidechat-1 的 check_messages</code></span>
+      <div class="conn-head">
+        <span>等待 Agent 连接</span>
+        <span class="hint-status" id="hintStatus"></span>
+      </div>
+      <div class="conn-hint-row">
+        <span class="conn-hint">在 Cursor 对话中输入：<code id="hintPhrase">请使用 sidechat-1 的 check_messages</code></span>
+        <button type="button" class="btn btn-sm btn-copy-hint" id="copyHintBtn">复制</button>
+      </div>
     </div>
 
     <div class="composer" id="sendMessageSection">
@@ -95,12 +101,6 @@ ${getStyles()}
     <div id="imgPreviewOverlay" class="img-preview-overlay" aria-hidden="true">
       <div class="img-preview-backdrop" id="imgPreviewBackdrop"></div>
       <img id="imgPreviewFull" alt="" />
-    </div>
-
-    <div class="hint-bar">
-      <code class="hint-code" id="hintPhrase">请使用 sidechat-1 的 check_messages</code>
-      <button type="button" class="btn btn-sm btn-copy-hint" id="copyHintBtn">复制</button>
-      <span class="hint-status" id="hintStatus"></span>
     </div>
 
     <div class="chat-section">

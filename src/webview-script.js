@@ -76,7 +76,6 @@ function getScript(nonce, maxSessions, platform) {
     const currentPathDisplay = document.getElementById('currentPathDisplay');
     const configDetails = document.getElementById('configDetails');
     const connectionBanner = document.getElementById('connectionBanner');
-    const bannerHintCode = document.getElementById('bannerHintCode');
 
     var MAX_SESSIONS = <<<__SC_MAX_SESSIONS__>>>;
     var MAX_HISTORY_MESSAGES_PER_SESSION = <<<__SC_MAX_HIST__>>>;
@@ -158,7 +157,7 @@ function getScript(nonce, maxSessions, platform) {
       var rt=runtimeBySession[activeSessionId]||{};
       var connected=rt.state==='connected'||rt.heartbeatFresh;
       connectionBanner.classList.toggle('hidden',connected);
-      if(bannerHintCode) bannerHintCode.textContent='请使用 sidechat-'+activeSessionId+' 的 check_messages';
+      if(hintPhrase) hintPhrase.textContent='请使用 sidechat-'+activeSessionId+' 的 check_messages';
     }
 
     // ── session tabs ──

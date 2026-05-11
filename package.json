@@ -2,7 +2,7 @@
 	"name": "sidechat",
 	"displayName": "SideChat",
 	"description": "Cursor 侧栏多通道 MCP 面板：多窗口独立通道、持续轮询、支持截图粘贴。",
-	"version": "1.8.4",
+	"version": "1.8.5",
 	"publisher": "kkyy",
 	"license": "MIT",
 	"keywords": [
@@ -61,7 +61,7 @@
 		}
 	},
 	"scripts": {
-		"compile": "tsc -p . && node -e \"const{getScript}=require('./dist/webview-script');const s=getScript('x',3,'darwin');require('fs').writeFileSync('/tmp/_sc_check.js',s)\" && node --check /tmp/_sc_check.js",
+		"compile": "tsc -p . && node -e \"const{getScript}=require('./dist/webview-script');const{MAX_SESSIONS}=require('./dist/constants');const s=getScript('x',MAX_SESSIONS,'darwin');require('fs').writeFileSync('/tmp/_sc_check.js',s)\" && node --check /tmp/_sc_check.js",
 		"watch": "tsc -p . -w",
 		"package": "vsce package --no-dependencies",
 		"vscode:uninstall": "node ./dist/uninstall.js",

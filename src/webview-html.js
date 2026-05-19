@@ -47,6 +47,9 @@ ${getStyles()}
         <div class="config-row">
           <button class="btn btn-blue" id="cfgBtn">开始配置</button>
           <button class="btn btn-sm" id="useCurrentBtn">使用当前</button>
+          <button class="btn btn-icon btn-copy-phrase" id="copyPhraseBtn" title="复制启动口令">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          </button>
         </div>
         <div class="config-row cleanup-row">
           <button class="btn btn-sm btn-danger" id="cleanupArtifactsBtn">卸载前清理</button>
@@ -59,7 +62,7 @@ ${getStyles()}
           <input type="text" class="memo-input" id="sessionMemoInput" placeholder="例如：前端仓库 / 写文档 / 测试" maxlength="200" />
         </div>
         <div class="presets-config">
-          <div class="presets-config-label">快捷指令（点击即发送，最多 3 条）</div>
+          <div class="presets-config-label">快捷指令（点击填入输入框，最多 10 条）</div>
           <div class="presets-config-list" id="presetsConfigList"></div>
           <button type="button" class="btn btn-sm" id="addPresetBtn">+ 添加指令</button>
         </div>

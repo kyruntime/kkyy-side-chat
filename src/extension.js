@@ -544,7 +544,7 @@ check_messages()
                         const items = v
                             .filter((s) => typeof s === "string" && s.trim())
                             .map((s) => s.trim().slice(0, 200))
-                            .slice(0, 3);
+                            .slice(0, 10);
                         if (items.length > 0)
                             next[k] = items;
                     }

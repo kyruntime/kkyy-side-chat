@@ -76,6 +76,7 @@ function getScript(nonce, maxSessions, platform) {
     const currentPathDisplay = document.getElementById('currentPathDisplay');
     const configDetails = document.getElementById('configDetails');
     const connectionBanner = document.getElementById('connectionBanner');
+    const copyPhraseBtn = document.getElementById('copyPhraseBtn');
 
     var MAX_SESSIONS = <<<__SC_MAX_SESSIONS__>>>;
     var MAX_HISTORY_MESSAGES_PER_SESSION = <<<__SC_MAX_HIST__>>>;
@@ -166,6 +167,7 @@ function getScript(nonce, maxSessions, platform) {
       if(sessionMemoBadge) sessionMemoBadge.textContent='MCP-'+activeSessionId;
       if(sessionMemoInput) sessionMemoInput.value=sessionMemos[activeSessionId]||'';
       if(hintPhrase) hintPhrase.textContent='请使用 sidechat-'+activeSessionId+' 的 check_messages';
+      if(copyPhraseBtn) copyPhraseBtn.title='复制：请使用 sidechat-'+activeSessionId+' 的 check_messages';
       renderHintStatus();
       updateConnectionBanner();
     }
@@ -304,7 +306,7 @@ function getScript(nonce, maxSessions, platform) {
     updateCurrentPathDisplay('',false);
 
     // ── preset commands ──
-    var MAX_PRESETS = 3;
+    var MAX_PRESETS = 10;
     var presetsBySession = {};
     var presetsBar = document.getElementById('presetsBar');
     var presetsConfigList = document.getElementById('presetsConfigList');
@@ -351,8 +353,10 @@ function getScript(nonce, maxSessions, platform) {
           msgInput.innerHTML='';
           msgInput.appendChild(document.createTextNode(combined));
           updateComposerEmptyClass();
+          setDraftValue(activeSessionId,msgInput.innerHTML);
+          persistDraftsSoon();
+          msgInput.focus();
         }
-        sendMessage();
       }
     });
     if(presetsConfigList) presetsConfigList.addEventListener('input',function(e){
@@ -380,6 +384,7 @@ function getScript(nonce, maxSessions, platform) {
 
     copyHintBtn.addEventListener('click',function(){vscodeApi.postMessage({command:'copyCheckPhrase',sessionId:activeSessionId})});
     if(hintPhrase) hintPhrase.addEventListener('click',function(){vscodeApi.postMessage({command:'copyCheckPhrase',sessionId:activeSessionId})});
+    if(copyPhraseBtn) copyPhraseBtn.addEventListener('click',function(){vscodeApi.postMessage({command:'copyCheckPhrase',sessionId:activeSessionId})});
 
     function persistSessionOrderSoon() {
       if(sessionOrderTimer)clearTimeout(sessionOrderTimer);

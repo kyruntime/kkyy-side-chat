@@ -152,6 +152,8 @@ function getStyles() {
     .btn-danger:hover{background:rgba(248,113,113,.14);color:var(--red);border-color:rgba(248,113,113,.45)}
     .btn-sm{padding:5px 11px;font-size:12px;border-radius:6px}
     .btn-icon{width:32px;height:32px;padding:0;border-radius:8px;justify-content:center}
+    .btn-copy-phrase{width:32px;height:32px;border-color:transparent;background:transparent;color:var(--text3)}
+    .btn-copy-phrase:hover{color:var(--blue);background:var(--accent-soft);border-color:var(--border)}
 
     /* ── connection banner ── */
     .conn-banner{

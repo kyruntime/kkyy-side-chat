@@ -2,7 +2,7 @@
 	"name": "sidechat",
 	"displayName": "SideChat",
 	"description": "Cursor 侧栏多通道 MCP 面板：多窗口独立通道、持续轮询、支持截图粘贴。",
-	"version": "1.8.6",
+	"version": "1.8.7",
 	"publisher": "kkyy",
 	"license": "MIT",
 	"keywords": [

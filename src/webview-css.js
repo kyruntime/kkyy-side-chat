@@ -189,12 +189,12 @@ function getStyles() {
     .next-steps-send:hover{transform:scale(1.08);box-shadow:0 2px 8px var(--glow)}
     .next-steps-send svg{width:11px;height:11px}
 
-    /* ── bottom section (fixed at bottom) ── */
-    .bottom-section{
-      flex-shrink:0;padding:0 14px 10px;
-      border-top:1px solid var(--border);background:var(--bg-solid);
+    /* ── top section (composer above chat) ── */
+    .top-section{
+      flex-shrink:0;padding:0 14px;
+      border-bottom:1px solid var(--border);background:var(--bg-solid);
     }
-    .presets-bar{display:flex;flex-wrap:wrap;gap:4px;padding:8px 0 4px}
+    .presets-bar{display:flex;flex-wrap:wrap;gap:4px;padding:4px 0 8px}
     .presets-bar:empty{display:none;padding:0}
     .preset-chip{
       padding:4px 10px;font-size:11.5px;font-weight:500;
@@ -209,10 +209,10 @@ function getStyles() {
     /* ── composer ── */
     .composer{
       background:var(--glass);border:1px solid var(--border);border-radius:var(--r);
-      padding:0;overflow:hidden;
+      padding:0;overflow:hidden;margin-top:8px;
     }
     .composer .msg-input{
-      width:100%;min-height:64px;max-height:200px;overflow-y:auto;padding:10px 12px;
+      width:100%;min-height:100px;max-height:240px;overflow-y:auto;padding:10px 12px;
       border:none;border-radius:0;background:transparent;color:var(--text);
       font-size:13.5px;font-family:inherit;line-height:1.5;outline:none;
       white-space:pre-wrap;word-break:break-word;resize:none;

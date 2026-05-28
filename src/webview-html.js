@@ -48,19 +48,7 @@ ${getStyles()}
     </div>
   </div>
 
-  <div class="chat-area" id="chatContainer">
-    <div id="messagesList"></div>
-    <div class="empty" id="emptyState">
-      <div class="empty-icon">
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-      </div>
-      <div class="empty-title">发送消息开始对话</div>
-      <div class="empty-sub">输入文字，按 Cmd+Enter 或点发送按钮</div>
-    </div>
-  </div>
-
-  <div class="bottom-section">
-    <div class="presets-bar" id="presetsBar"></div>
+  <div class="top-section">
     <div class="composer" id="sendMessageSection">
       <div style="position:relative">
         <div id="msgInput" class="msg-input is-empty" contenteditable="true" data-placeholder="输入消息… Cmd+Enter 发送，Ctrl+V 粘贴截图"></div>
@@ -84,7 +72,20 @@ ${getStyles()}
       </div>
       <div class="feedback" id="sendFeedback"></div>
     </div>
+    <div class="presets-bar" id="presetsBar"></div>
   </div>
+
+  <div class="chat-area" id="chatContainer">
+    <div id="messagesList"></div>
+    <div class="empty" id="emptyState">
+      <div class="empty-icon">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      </div>
+      <div class="empty-title">发送消息开始对话</div>
+      <div class="empty-sub">输入文字，按 Cmd+Enter 或点发送按钮</div>
+    </div>
+  </div>
+
 
   <div id="imgPreviewOverlay" class="img-preview-overlay" aria-hidden="true">
     <div class="img-preview-backdrop" id="imgPreviewBackdrop"></div>

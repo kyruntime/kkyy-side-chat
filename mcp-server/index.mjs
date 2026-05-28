@@ -6,7 +6,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { readFileSync, writeFileSync, mkdirSync, existsSync, renameSync, appendFileSync, unlinkSync } from "fs";
+import { readFileSync, writeFileSync, mkdirSync, existsSync, renameSync, appendFileSync, unlinkSync, readdirSync } from "fs";
 import { join, resolve } from "path";
 import { homedir } from "os";
 import { randomBytes, createHash } from "crypto";
@@ -114,6 +114,35 @@ function readQueue() {
 
 function writeQueue(data) {
   atomicWriteSync(queuePath, JSON.stringify(data, null, 2));
+}
+
+/** Scan for individual message files (msg-*.json), return sorted filenames */
+function scanMessageFiles() {
+  try {
+    if (!existsSync(queueDir)) return [];
+    return readdirSync(queueDir)
+      .filter(f => f.startsWith("msg-") && f.endsWith(".json"))
+      .sort();
+  } catch {
+    return [];
+  }
+}
+
+/** Read and consume the oldest individual message file; returns parsed message or null */
+function consumeOldestMessageFile() {
+  const files = scanMessageFiles();
+  for (const file of files) {
+    const filePath = join(queueDir, file);
+    try {
+      const raw = readFileSync(filePath, "utf-8");
+      const msg = JSON.parse(raw);
+      try { unlinkSync(filePath); } catch {}
+      return msg;
+    } catch {
+      try { unlinkSync(filePath); } catch {}
+    }
+  }
+  return null;
 }
 
 function readRuntimeConfig() {
@@ -349,12 +378,20 @@ server.registerTool(
         const queued = Array.isArray(data.messages) ? data.messages : [];
         consecutiveErrors = 0;
 
+        // Legacy messages.json (backward compat)
         if (queued.length > 0) {
           const first = queued[0];
           const rest = queued.slice(1);
           writeQueue({ messages: rest });
 
           const { textPieces, imageParts } = parseMessage(first);
+          return buildMessageResponse(textPieces, imageParts);
+        }
+
+        // Individual message files (race-free)
+        const fileMsg = consumeOldestMessageFile();
+        if (fileMsg) {
+          const { textPieces, imageParts } = parseMessage(fileMsg);
           return buildMessageResponse(textPieces, imageParts);
         }
 
@@ -403,6 +440,16 @@ server.registerTool(
   async ({ question }) => {
     const data = readQueue();
     const texts = data.messages?.map((m) => m.text).filter(Boolean) ?? [];
+    if (texts.length === 0) {
+      const files = scanMessageFiles();
+      for (const file of files) {
+        try {
+          const raw = readFileSync(join(queueDir, file), "utf-8");
+          const msg = JSON.parse(raw);
+          if (msg.text) texts.push(msg.text);
+        } catch {}
+      }
+    }
     const userReply = texts.length ? texts[0] : "\u7528\u6237\u6682\u65E0\u56DE\u590D";
     return { content: [{ type: "text", text: `\u95EE\u9898\uFF1A${question}\n\u7528\u6237\u56DE\u590D\uFF1A${userReply}` }] };
   }

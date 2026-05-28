@@ -269,7 +269,14 @@ function readSessionRuntimeSnapshot(sessionId) {
     const heartbeat = readJsonFileSafe(paths.heartbeatPath, null);
     const aiDone = readJsonFileSafe(paths.aiDonePath, null);
     const queue = readJsonFileSafe(paths.queuePath, { messages: [] });
-    const queueSize = Array.isArray(queue?.messages) ? queue.messages.length : 0;
+    let queueSize = Array.isArray(queue?.messages) ? queue.messages.length : 0;
+    try {
+        if (fs.existsSync(paths.sessionDir)) {
+            queueSize += fs.readdirSync(paths.sessionDir)
+                .filter(f => f.startsWith("msg-") && f.endsWith(".json"))
+                .length;
+        }
+    } catch {}
     let state = "idle";
     const now = Date.now();
     const heartbeatTime = heartbeat?.updatedAt ? new Date(heartbeat.updatedAt).getTime() : 0;

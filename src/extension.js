@@ -7,7 +7,7 @@ const fs = require("fs");
 const os = require("os");
 const child_process_1 = require("child_process");
 const cleanup_1 = require("./cleanup");
-const { VIEW_ID, BRAND_TITLE, MCP_SERVER_PREFIX, MANAGED_RULE_FILE_NAME, MANAGED_MCP_KEY, GLOBAL_STATE_SESSION_KEY, GLOBAL_STATE_SESSION_ORDER_KEY, GLOBAL_STATE_SESSION_MEMOS_KEY, GLOBAL_STATE_DRAFTS_KEY, GLOBAL_STATE_LAST_WORKSPACE_PATH_KEY, GLOBAL_STATE_PRESETS_KEY, MAX_SESSION_MEMO_CHARS, } = require("./constants");
+const { VIEW_ID, BRAND_TITLE, MCP_SERVER_PREFIX, MANAGED_RULE_FILE_NAME, MANAGED_MCP_KEY, GLOBAL_STATE_SESSION_KEY, GLOBAL_STATE_SESSION_ORDER_KEY, GLOBAL_STATE_SESSION_MEMOS_KEY, GLOBAL_STATE_DRAFTS_KEY, GLOBAL_STATE_LAST_WORKSPACE_PATH_KEY, GLOBAL_STATE_PRESETS_KEY, GLOBAL_STATE_DEFAULT_PRESETS_KEY, MAX_SESSION_MEMO_CHARS, } = require("./constants");
 const session = require("./session");
 const { setActiveWorkspace, normalizeSessionOrder, readSessionOrder, readSessionMemos, readSessionDrafts, readLastWorkspacePath, rememberManagedWorkspace, serializePersistedSessionHistories, clearPersistedSessionArtifacts, clearSessionQueueDir, readSessionRuntimeSnapshot, ensureRuntimeConfig, primeSessionRuntimeState, markSessionQueued, isValidSessionId, } = session;
 const webview_html_1 = require("./webview-html");
@@ -344,6 +344,10 @@ check_messages()
                 if (savedPresets && typeof savedPresets === "object") {
                     webviewView.webview.postMessage({ command: "restorePresets", presets: savedPresets });
                 }
+                const savedDefaultPresets = context.workspaceState.get(GLOBAL_STATE_DEFAULT_PRESETS_KEY);
+                if (Array.isArray(savedDefaultPresets)) {
+                    webviewView.webview.postMessage({ command: "restoreDefaultPresets", presets: savedDefaultPresets });
+                }
             }, 50);
             const savedHist = serializePersistedSessionHistories(context.workspaceState.get(GLOBAL_STATE_SESSION_KEY));
             if (savedHist !== "{}") {
@@ -551,6 +555,20 @@ check_messages()
                     void context.workspaceState.update(GLOBAL_STATE_PRESETS_KEY, next);
                     return;
                 }
+                if (cmd === "persistDefaultPresets") {
+                    const raw = message.presets;
+                    if (!Array.isArray(raw)) {
+                        void context.workspaceState.update(GLOBAL_STATE_DEFAULT_PRESETS_KEY, []);
+                        return;
+                    }
+                    const items = raw
+                        .filter((s) => typeof s === "string" && s.trim())
+                        .map((s) => s.trim().slice(0, 200))
+                        .slice(0, 10);
+                    void context.workspaceState.update(GLOBAL_STATE_DEFAULT_PRESETS_KEY, items);
+                    webviewView.webview.postMessage({ command: "defaultPresetsSet", ok: true });
+                    return;
+                }
                 if (cmd === "persistWorkspacePath") {
                     const nextPath = String(message.path ?? "").trim();
                     void context.workspaceState.update(GLOBAL_STATE_LAST_WORKSPACE_PATH_KEY, nextPath);
@@ -560,10 +578,21 @@ check_messages()
                 if (cmd === "clearSessionQueue") {
                     const sid = String(message.sessionId ?? "");
                     if (isValidSessionId(sid)) {
+                        const sidDir = path.join(session.MESSAGE_QUEUE_ROOT_DIR, "s", sid);
                         try {
-                            const queueFile = path.join(session.MESSAGE_QUEUE_ROOT_DIR, "s", sid, "messages.json");
+                            const queueFile = path.join(sidDir, "messages.json");
                             if (fs.existsSync(queueFile)) {
                                 fs.writeFileSync(queueFile, JSON.stringify({ messages: [] }, null, 2), "utf-8");
+                            }
+                        }
+                        catch { }
+                        try {
+                            if (fs.existsSync(sidDir)) {
+                                for (const f of fs.readdirSync(sidDir)) {
+                                    if (f.startsWith("msg-") && f.endsWith(".json")) {
+                                        try { fs.unlinkSync(path.join(sidDir, f)); } catch { }
+                                    }
+                                }
                             }
                         }
                         catch { }
@@ -659,7 +688,6 @@ check_messages()
                     }
                     const queueDir = session.MESSAGE_QUEUE_ROOT_DIR;
                     const sessionDir = path.join(queueDir, "s", sessionId);
-                    const queuePath = path.join(sessionDir, "messages.json");
                     ensureRuntimeConfig();
                     if (workspacePath) {
                         const workspaceInfoPath = path.join(queueDir, "workspace.json");
@@ -672,27 +700,19 @@ check_messages()
                             // ignore
                         }
                     }
-                    let data = { messages: [] };
-                    try {
-                        if (fs.existsSync(queuePath)) {
-                            data = JSON.parse(fs.readFileSync(queuePath, "utf-8"));
-                        }
-                    }
-                    catch {
-                        data = { messages: [] };
-                    }
-                    data.messages = data.messages ?? [];
                     const entry = {
                         text,
                         time: new Date().toISOString(),
                     };
                     if (images.length > 0)
                         entry.images = images;
-                    data.messages.push(entry);
                     try {
                         if (!fs.existsSync(sessionDir))
                             fs.mkdirSync(sessionDir, { recursive: true });
-                        fs.writeFileSync(queuePath, JSON.stringify(data, null, 2), "utf-8");
+                        const ts = String(Date.now()).padStart(15, "0");
+                        const rand = Math.random().toString(36).slice(2, 6);
+                        const msgFile = path.join(sessionDir, `msg-${ts}-${rand}.json`);
+                        fs.writeFileSync(msgFile, JSON.stringify(entry, null, 2), "utf-8");
                         markSessionQueued(sessionId);
                         webviewView.webview.postMessage({
                             command: "sendResult",

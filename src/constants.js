@@ -16,6 +16,7 @@ exports.GLOBAL_STATE_SESSION_MEMOS_KEY = "sidechat.sessionMemos.v1";
 exports.GLOBAL_STATE_DRAFTS_KEY = "sidechat.sessionDrafts.v1";
 exports.GLOBAL_STATE_LAST_WORKSPACE_PATH_KEY = "sidechat.lastWorkspacePath.v1";
 exports.GLOBAL_STATE_PRESETS_KEY = "sidechat.presets.v1";
+exports.GLOBAL_STATE_DEFAULT_PRESETS_KEY = "sidechat.defaultPresets.v1";
 exports.MAX_SESSION_MEMO_CHARS = 200;
 exports.MAX_SESSION_HISTORY_ITEMS = 80;
 exports.MAX_ATTACH_BASE64_CHARS = 14_000_000;

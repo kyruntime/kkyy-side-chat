@@ -35,14 +35,19 @@ function getScript(nonce, maxSessions, platform) {
       document.addEventListener('keydown',function(e){if(e.key==='Escape'&&ov&&ov.classList.contains('visible'))close()});
     })();
 
-    // ── config toggle ──
+    // ── settings overlay ──
     (function(){
-      var btn=document.getElementById('toggleConfigBtn');
-      var det=document.getElementById('configDetails');
-      if(btn&&det) btn.addEventListener('click',function(){
-        if(det.hasAttribute('open')) det.removeAttribute('open');
-        else det.setAttribute('open','');
-      });
+      var overlay=document.getElementById('settingsOverlay');
+      var openBtn=document.getElementById('settingsBtn');
+      var closeBtn=document.getElementById('closeSettingsBtn');
+      var backdrop=document.getElementById('settingsBackdrop');
+      function openSettings(){if(overlay){overlay.classList.add('visible');overlay.setAttribute('aria-hidden','false')}}
+      function closeSettings(){if(overlay){overlay.classList.remove('visible');overlay.setAttribute('aria-hidden','true')}}
+      if(openBtn)openBtn.addEventListener('click',openSettings);
+      if(closeBtn)closeBtn.addEventListener('click',closeSettings);
+      if(backdrop)backdrop.addEventListener('click',closeSettings);
+      document.addEventListener('keydown',function(e){if(e.key==='Escape'&&overlay&&overlay.classList.contains('visible'))closeSettings()});
+      window.__openSettings=openSettings;window.__closeSettings=closeSettings;
     })();
 
     const statusDot = document.getElementById('statusDot');
@@ -74,7 +79,7 @@ function getScript(nonce, maxSessions, platform) {
     const sessionMemoBadge = document.getElementById('sessionMemoBadge');
     const sessionMemoInput = document.getElementById('sessionMemoInput');
     const currentPathDisplay = document.getElementById('currentPathDisplay');
-    const configDetails = document.getElementById('configDetails');
+    const settingsOverlay = document.getElementById('settingsOverlay');
     const connectionBanner = document.getElementById('connectionBanner');
     const copyPhraseBtn = document.getElementById('copyPhraseBtn');
 
@@ -265,7 +270,11 @@ function getScript(nonce, maxSessions, platform) {
       var next=null;
       for(var n=1;n<=MAX_SESSIONS;n++){var id=String(n);if(!used[id]){next=id;break}}
       if(!next)return;
-      ensureSessionStructures(next);sessionOrder.push(next);activeSessionId=next;
+      ensureSessionStructures(next);
+      if(defaultPresets.length>0&&!Array.isArray(presetsBySession[next])){
+        setPresets(next,defaultPresets.slice());persistPresetsSoon();
+      }
+      sessionOrder.push(next);activeSessionId=next;
       if(msgInput)setComposerHtml(activeSessionId,getDraftValue(activeSessionId));
       renderAttachChips();
       persistSessionOrderSoon();renderSessionTabs();renderMessages();schedulePersist();
@@ -308,12 +317,18 @@ function getScript(nonce, maxSessions, platform) {
     // ── preset commands ──
     var MAX_PRESETS = 10;
     var presetsBySession = {};
+    var defaultPresets = [];
     var presetsBar = document.getElementById('presetsBar');
     var presetsConfigList = document.getElementById('presetsConfigList');
     var addPresetBtn = document.getElementById('addPresetBtn');
+    var setDefaultPresetsBtn = document.getElementById('setDefaultPresetsBtn');
     var presetsTimer = null;
 
-    function getPresets(sid) { return Array.isArray(presetsBySession[sid]) ? presetsBySession[sid] : []; }
+    function getPresets(sid) {
+      if (Array.isArray(presetsBySession[sid])) return presetsBySession[sid];
+      if (defaultPresets.length > 0) return defaultPresets.slice();
+      return [];
+    }
     function setPresets(sid, arr) { presetsBySession[sid] = (arr||[]).filter(function(s){return typeof s==='string'}).map(function(s){return s.slice(0,200)}).slice(0,MAX_PRESETS); }
     function persistPresetsSoon() {
       if(presetsTimer) clearTimeout(presetsTimer);
@@ -378,6 +393,12 @@ function getScript(nonce, maxSessions, platform) {
       items.push('');setPresets(activeSessionId,items);persistPresetsSoon();renderPresetsConfig();
       var lastInput=presetsConfigList?presetsConfigList.querySelector('.preset-config-row:last-child .preset-config-input'):null;
       if(lastInput) lastInput.focus();
+    });
+    if(setDefaultPresetsBtn) setDefaultPresetsBtn.addEventListener('click',function(){
+      var items=getPresets(activeSessionId).filter(function(s){return s&&s.trim()});
+      defaultPresets=items.slice();
+      vscodeApi.postMessage({command:'persistDefaultPresets',presets:items});
+      showFeedback(cfgFeedback,'success','已设为默认指令（新建会话将自动使用）');
     });
     renderPresetsBar();
     renderPresetsConfig();
@@ -514,7 +535,7 @@ function getScript(nonce, maxSessions, platform) {
     browseBtn.addEventListener('click',function(){vscodeApi.postMessage({command:'selectFolder'})});
     useCurrentBtn.addEventListener('click',function(){vscodeApi.postMessage({command:'requestCurrentWorkspace'})});
 
-    function hintReconfigureAfterSessionChange(){showFeedback(cfgFeedback,'info','会话已变：请再点「开始配置」同步 .cursor/mcp.json')}
+    function hintReconfigureAfterSessionChange(){showFeedback(sendFeedback,'info','会话已变：请点⚙重新配置')}
 
     cfgBtn.addEventListener('click',function(){
       setLoading(cfgBtn,true);
@@ -704,16 +725,14 @@ function getScript(nonce, maxSessions, platform) {
             if(!msg.silent) showFeedback(cfgFeedback,'success',msg.msg);
             statusDot.className='status-dot ok';
             addMessage('system','配置成功，MCP 已就绪\\n'+currentWorkspacePath);
-            if(configDetails)configDetails.removeAttribute('open');
+            if(window.__closeSettings)window.__closeSettings();
           }else{
             showFeedback(cfgFeedback,'error','配置失败：'+msg.msg);statusDot.className='status-dot err';
-            if(configDetails)configDetails.setAttribute('open','');
           }break;
         case 'cleanupArtifactsResult':
           if(cleanupArtifactsBtn) setLoading(cleanupArtifactsBtn,false);
           if(msg.ok){
             showFeedback(cfgFeedback,'success',msg.msg||'已清理完成');
-            if(configDetails)configDetails.setAttribute('open','');
           }else{
             showFeedback(cfgFeedback,'error','清理失败：'+(msg.msg||''));
           }break;
@@ -735,6 +754,12 @@ function getScript(nonce, maxSessions, platform) {
         case 'restoreWorkspacePath':
           if(typeof msg.path==='string'&&msg.path.trim()){var rp=msg.path.trim();pathInput.value=rp;if(!currentWorkspacePath)updateCurrentPathDisplay(rp,false)}
           else updateCurrentPathDisplay(currentWorkspacePath,!!currentWorkspacePath);break;
+        case 'restoreDefaultPresets':
+          if(Array.isArray(msg.presets)){
+            defaultPresets=msg.presets.filter(function(s){return typeof s==='string'&&s.trim()}).map(function(s){return s.trim().slice(0,200)}).slice(0,MAX_PRESETS);
+            renderPresetsBar();renderPresetsConfig();
+          }break;
+        case 'defaultPresetsSet':break;
         case 'restorePresets':
           if(msg.presets&&typeof msg.presets==='object'){
             Object.keys(msg.presets).forEach(function(k){

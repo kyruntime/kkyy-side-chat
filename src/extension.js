@@ -7,7 +7,8 @@ const fs = require("fs");
 const os = require("os");
 const child_process_1 = require("child_process");
 const cleanup_1 = require("./cleanup");
-const { VIEW_ID, BRAND_TITLE, MCP_SERVER_PREFIX, MANAGED_RULE_FILE_NAME, MANAGED_MCP_KEY, GLOBAL_STATE_SESSION_KEY, GLOBAL_STATE_SESSION_ORDER_KEY, GLOBAL_STATE_SESSION_MEMOS_KEY, GLOBAL_STATE_DRAFTS_KEY, GLOBAL_STATE_LAST_WORKSPACE_PATH_KEY, GLOBAL_STATE_PRESETS_KEY, GLOBAL_STATE_DEFAULT_PRESETS_KEY, MAX_SESSION_MEMO_CHARS, } = require("./constants");
+const { VIEW_ID, BRAND_TITLE, MCP_SERVER_PREFIX, MANAGED_RULE_FILE_NAME, MANAGED_MCP_KEY, GLOBAL_STATE_SESSION_KEY, GLOBAL_STATE_SESSION_ORDER_KEY, GLOBAL_STATE_SESSION_MEMOS_KEY, GLOBAL_STATE_DRAFTS_KEY, GLOBAL_STATE_LAST_WORKSPACE_PATH_KEY, GLOBAL_STATE_PRESETS_KEY, GLOBAL_STATE_DEFAULT_PRESETS_KEY, MAX_SESSION_MEMO_CHARS, IMAGES_BASE_DIR, } = require("./constants");
+const crypto = require("crypto");
 const session = require("./session");
 const { setActiveWorkspace, normalizeSessionOrder, readSessionOrder, readSessionMemos, readSessionDrafts, readLastWorkspacePath, rememberManagedWorkspace, serializePersistedSessionHistories, clearPersistedSessionArtifacts, clearSessionQueueDir, readSessionRuntimeSnapshot, ensureRuntimeConfig, primeSessionRuntimeState, markSessionQueued, isValidSessionId, } = session;
 const webview_html_1 = require("./webview-html");
@@ -85,6 +86,53 @@ function recognizeSpeechWindows(timeoutMs) {
             resolve({ ok: false, err: String(e) });
         });
     });
+}
+function mimeToExt(mime) {
+    if (mime === "image/jpeg") return "jpg";
+    if (mime === "image/gif") return "gif";
+    if (mime === "image/webp") return "webp";
+    return "png";
+}
+function saveImageFile(sessionId, base64Data, mimeType) {
+    const mt = SAFE_MIME_SET.has(mimeType) ? mimeType : "image/png";
+    const ext = mimeToExt(mt);
+    const hash = crypto.createHash("sha256").update(base64Data.slice(0, 512)).digest("hex").slice(0, 12);
+    const ts = Date.now();
+    const dir = path.join(IMAGES_BASE_DIR, "s", sessionId);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    const fileName = `${ts}-${hash}.${ext}`;
+    const filePath = path.join(dir, fileName);
+    fs.writeFileSync(filePath, Buffer.from(base64Data, "base64"));
+    return filePath;
+}
+const SAFE_MIME_SET = new Set(["image/png", "image/jpeg", "image/jpg", "image/gif", "image/webp"]);
+function readImageAsDataUri(localPath, mimeType) {
+    try {
+        const resolved = path.resolve(localPath);
+        if (!resolved.startsWith(IMAGES_BASE_DIR + path.sep)) return null;
+        if (!fs.existsSync(resolved)) return null;
+        const mt = SAFE_MIME_SET.has(mimeType) ? mimeType : "image/png";
+        const buf = fs.readFileSync(resolved);
+        return `data:${mt};base64,${buf.toString("base64")}`;
+    } catch { return null; }
+}
+function enrichHistoriesWithImages(histJson) {
+    try {
+        const data = typeof histJson === "string" ? JSON.parse(histJson) : histJson;
+        if (!data || typeof data !== "object") return histJson;
+        for (const sid of Object.keys(data)) {
+            if (!Array.isArray(data[sid])) continue;
+            for (const msg of data[sid]) {
+                if (!Array.isArray(msg.images) || msg.images.length === 0) continue;
+                msg.images = msg.images.map((img) => {
+                    if (img.dataUri) return img;
+                    const uri = readImageAsDataUri(img.localPath, img.mimeType);
+                    return uri ? { ...img, dataUri: uri } : img;
+                });
+            }
+        }
+        return JSON.stringify(data);
+    } catch { return histJson; }
 }
 function activate(context) {
     console.log(`[${viewType}] activate() called`);
@@ -359,7 +407,7 @@ check_messages()
             const savedHist = serializePersistedSessionHistories(context.workspaceState.get(GLOBAL_STATE_SESSION_KEY));
             if (savedHist !== "{}") {
                 setTimeout(() => {
-                    webviewView.webview.postMessage({ command: "restoreHistories", payload: savedHist });
+                    webviewView.webview.postMessage({ command: "restoreHistories", payload: enrichHistoriesWithImages(savedHist) });
                 }, 100);
             }
             // Auto-configure MCP when sidebar opens if workspace folder is available
@@ -555,7 +603,7 @@ check_messages()
                         const items = v
                             .filter((s) => typeof s === "string" && s.trim())
                             .map((s) => s.trim().slice(0, 200))
-                            .slice(0, 10);
+                            .slice(0, 20);
                         if (items.length > 0)
                             next[k] = items;
                     }
@@ -571,7 +619,7 @@ check_messages()
                     const items = raw
                         .filter((s) => typeof s === "string" && s.trim())
                         .map((s) => s.trim().slice(0, 200))
-                        .slice(0, 10);
+                        .slice(0, 20);
                     void context.globalState.update(GLOBAL_STATE_DEFAULT_PRESETS_KEY, items);
                     webviewView.webview.postMessage({ command: "defaultPresetsSet", ok: true });
                     return;
@@ -609,6 +657,7 @@ check_messages()
                             }
                         }
                         catch { }
+                        try { fs.rmSync(path.join(IMAGES_BASE_DIR, "s", sid), { recursive: true, force: true }); } catch { }
                     }
                     return;
                 }
@@ -630,6 +679,7 @@ check_messages()
                             await context.workspaceState.update(GLOBAL_STATE_DRAFTS_KEY, drafts);
                         }
                         clearSessionQueueDir(sid);
+                        try { fs.rmSync(path.join(IMAGES_BASE_DIR, "s", sid), { recursive: true, force: true }); } catch { }
                         webviewView.webview.postMessage({
                             command: "sessionDeleted",
                             ok: true,
@@ -735,6 +785,14 @@ check_messages()
                             throw writeErr;
                         }
                         markSessionQueued(sessionId);
+                        const imageRefs = images.map((img) => {
+                            try {
+                                const rawMt = img.mimeType || "image/png";
+                                const mt = SAFE_MIME_SET.has(rawMt) ? rawMt : "image/png";
+                                const localPath = saveImageFile(sessionId, img.data, mt);
+                                return { localPath, mimeType: mt, dataUri: `data:${mt};base64,${img.data}` };
+                            } catch { return null; }
+                        }).filter(Boolean);
                         webviewView.webview.postMessage({
                             command: "sendResult",
                             ok: true,
@@ -742,6 +800,7 @@ check_messages()
                             text,
                             sessionId,
                             imageCount: images.length,
+                            imageRefs,
                         });
                     }
                     catch (e) {

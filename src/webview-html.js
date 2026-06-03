@@ -125,7 +125,7 @@ ${getStyles()}
           <input type="text" class="memo-input" id="sessionMemoInput" placeholder="例如：前端仓库 / 写文档 / 测试" maxlength="200" />
         </div>
         <div class="settings-section">
-          <div class="settings-section-title">快捷指令（最多 10 条）</div>
+          <div class="settings-section-title">快捷指令（最多 20 条）</div>
           <div class="presets-config-list" id="presetsConfigList"></div>
           <div class="presets-btn-row">
             <button type="button" class="btn btn-sm" id="addPresetBtn">+ 添加指令</button>

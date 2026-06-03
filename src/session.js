@@ -148,11 +148,18 @@ function normalizePersistedSessionHistories(raw) {
                     time = t.toISOString();
                 }
             }
-            nextRows.push({
+            const entry = {
                 type: normalizeHistoryMessageType(o.type),
                 content: String(o.content ?? ""),
                 time,
-            });
+            };
+            if (Array.isArray(o.images) && o.images.length > 0) {
+                entry.images = o.images
+                    .filter((img) => img && typeof img.localPath === "string" && img.localPath)
+                    .map((img) => ({ localPath: img.localPath, mimeType: String(img.mimeType || "image/png") }));
+                if (entry.images.length === 0) delete entry.images;
+            }
+            nextRows.push(entry);
         }
         out[sid] = trimSessionHistoryItems(nextRows);
     }

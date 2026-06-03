@@ -171,6 +171,10 @@ function getStyles() {
     .msg-body{white-space:pre-wrap;word-break:break-word;font-size:13px;line-height:1.5}
     .msg.user .msg-body{color:var(--text)}
     .msg.system .msg-body{font-size:11px;line-height:1.4;opacity:.9}
+    .msg-images{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
+    .msg-img{max-width:100%;max-height:200px;border-radius:8px;cursor:pointer;object-fit:contain;transition:opacity .15s}
+    .msg-img:hover{opacity:.85}
+    .msg-img-placeholder{display:inline-block;padding:4px 8px;font-size:11px;color:var(--text3);background:var(--glass);border-radius:6px}
 
     /* ── empty state ── */
     .empty{text-align:center;padding:40px 16px;color:var(--text3);flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center}

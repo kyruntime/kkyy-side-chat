@@ -8,6 +8,7 @@ const cursorRoot = path.join(homedir, ".cursor");
 const managedWorkspaceRegistryPath = path.join(cursorRoot, "sidechat-managed-workspaces.json");
 const managedServerDir = path.join(cursorRoot, "sidechat-server");
 const managedMessagesDir = path.join(cursorRoot, "sidechat-messages");
+const managedImagesDir = path.join(cursorRoot, "sidechat-images");
 const managedRuleFileName = "sidechat.mdc";
 const managedMcpKey = /^sidechat-\d+$/;
 const extensionStateKeys = [
@@ -128,6 +129,7 @@ function cleanupSideChatArtifacts() {
     cleanupExtensionStateDb(removedItems);
     safeRemove(managedServerDir, removedItems);
     safeRemove(managedMessagesDir, removedItems);
+    safeRemove(managedImagesDir, removedItems);
     safeRemove(managedWorkspaceRegistryPath, removedItems);
     return removedItems;
 }

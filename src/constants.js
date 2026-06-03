@@ -22,4 +22,5 @@ exports.MAX_SESSION_HISTORY_ITEMS = 80;
 exports.MAX_ATTACH_BASE64_CHARS = 14_000_000;
 exports.MANAGED_WORKSPACES_REGISTRY_PATH = path.join(os.homedir(), ".cursor", "sidechat-managed-workspaces.json");
 exports.MESSAGES_BASE_DIR = path.join(os.homedir(), ".cursor", "sidechat-messages");
+exports.IMAGES_BASE_DIR = path.join(os.homedir(), ".cursor", "sidechat-images");
 exports.MANAGED_MCP_KEY = /^sidechat-\d+$/;

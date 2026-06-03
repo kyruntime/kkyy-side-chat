@@ -73,9 +73,14 @@ ${getStyles()}
       <div class="feedback" id="sendFeedback"></div>
     </div>
     <div class="presets-bar" id="presetsBar"></div>
+    <div id="nextStepsContainer"></div>
   </div>
 
-  <div class="chat-area" id="chatContainer">
+  <div class="chat-toggle" id="chatToggle">
+    <span class="chat-toggle-label">对话记录 · <span id="chatMsgCount">0</span>条</span>
+    <span class="chat-toggle-arrow" id="chatToggleArrow">▾</span>
+  </div>
+  <div class="chat-area collapsed" id="chatContainer">
     <div id="messagesList"></div>
     <div class="empty" id="emptyState">
       <div class="empty-icon">
@@ -124,7 +129,12 @@ ${getStyles()}
           <div class="presets-config-list" id="presetsConfigList"></div>
           <div class="presets-btn-row">
             <button type="button" class="btn btn-sm" id="addPresetBtn">+ 添加指令</button>
-            <button type="button" class="btn btn-sm btn-default-preset" id="setDefaultPresetsBtn" title="新建会话时自动使用这些指令">设为默认</button>
+            <div class="presets-dropdown-wrap" id="addFromDefaultsWrap">
+              <button type="button" class="btn btn-sm" id="addFromDefaultsBtn">从默认添加 ▾</button>
+              <div class="presets-dropdown" id="addFromDefaultsDropdown"></div>
+            </div>
+            <button type="button" class="btn btn-sm btn-blue" id="loadDefaultPresetsBtn" title="用全局默认指令替换当前会话">载入默认</button>
+            <button type="button" class="btn btn-sm btn-default-preset" id="setDefaultPresetsBtn" title="将当前指令保存为全局默认（所有窗口共享）">设为默认</button>
           </div>
         </div>
         <div class="settings-section cleanup-section">

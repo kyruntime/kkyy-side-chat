@@ -50,6 +50,39 @@ function getScript(nonce, maxSessions, platform) {
       window.__openSettings=openSettings;window.__closeSettings=closeSettings;
     })();
 
+    // ── chat collapse/expand ──
+    (function(){
+      var toggle=document.getElementById('chatToggle');
+      var chatArea=document.getElementById('chatContainer');
+      var arrow=document.getElementById('chatToggleArrow');
+      var countEl=document.getElementById('chatMsgCount');
+      var collapsed=true;
+      function updateCount(){
+        var msgs=document.getElementById('messagesList');
+        var n=msgs?msgs.querySelectorAll('.msg').length:0;
+        if(countEl)countEl.textContent=String(n);
+      }
+      function expand(){
+        collapsed=false;
+        if(chatArea)chatArea.classList.remove('collapsed');
+        if(toggle)toggle.classList.add('expanded');
+        updateCount();
+        var dot=toggle?toggle.querySelector('.chat-new-dot'):null;
+        if(dot)dot.remove();
+        setTimeout(function(){if(chatArea)chatArea.scrollTop=chatArea.scrollHeight},50);
+      }
+      function collapse(){
+        collapsed=true;
+        if(chatArea)chatArea.classList.add('collapsed');
+        if(toggle)toggle.classList.remove('expanded');
+      }
+      function toggleChat(){if(collapsed)expand();else collapse()}
+      if(toggle)toggle.addEventListener('click',toggleChat);
+      window.__updateChatCount=updateCount;
+      window.__expandChat=expand;
+      window.__isChatCollapsed=function(){return collapsed};
+    })();
+
     const statusDot = document.getElementById('statusDot');
     const pathInput = document.getElementById('pathInput');
     const browseBtn = document.getElementById('browseBtn');
@@ -262,6 +295,7 @@ function getScript(nonce, maxSessions, platform) {
       renderMessages();
       renderPresetsBar();
       renderPresetsConfig();
+      if(window.__updateChatCount)window.__updateChatCount();
     }
 
     function addSession() {
@@ -398,8 +432,64 @@ function getScript(nonce, maxSessions, platform) {
       var items=getPresets(activeSessionId).filter(function(s){return s&&s.trim()});
       defaultPresets=items.slice();
       vscodeApi.postMessage({command:'persistDefaultPresets',presets:items});
-      showFeedback(cfgFeedback,'success','已设为默认指令（新建会话将自动使用）');
+      showFeedback(cfgFeedback,'success','已设为全局默认指令（所有窗口共享）');
     });
+
+    var loadDefaultPresetsBtn=document.getElementById('loadDefaultPresetsBtn');
+    var addFromDefaultsBtn=document.getElementById('addFromDefaultsBtn');
+    var addFromDefaultsDropdown=document.getElementById('addFromDefaultsDropdown');
+    var pendingLoadAction=null;
+
+    if(loadDefaultPresetsBtn) loadDefaultPresetsBtn.addEventListener('click',function(){
+      pendingLoadAction='load';
+      vscodeApi.postMessage({command:'requestFreshDefaultPresets'});
+    });
+
+    function closeDefaultsDropdown(){
+      if(addFromDefaultsDropdown) addFromDefaultsDropdown.classList.remove('open');
+    }
+    function renderDefaultsDropdown(){
+      if(!addFromDefaultsDropdown)return;
+      if(defaultPresets.length===0){
+        addFromDefaultsDropdown.innerHTML='<div class="presets-dropdown-empty">没有全局默认指令，请先「设为默认」</div>';
+      }else{
+        var currentItems=getPresets(activeSessionId);
+        addFromDefaultsDropdown.innerHTML=defaultPresets.map(function(text,i){
+          var exists=currentItems.indexOf(text)>=0;
+          return '<button type="button" class="presets-dropdown-item'+(exists?' added':'')+'" data-default-idx="'+i+'" title="'+escapeHtml(text)+'">'+escapeHtml(text)+(exists?' ✓':'')+'</button>';
+        }).join('');
+      }
+      addFromDefaultsDropdown.classList.add('open');
+    }
+
+    if(addFromDefaultsBtn) addFromDefaultsBtn.addEventListener('click',function(e){
+      e.stopPropagation();
+      if(addFromDefaultsDropdown&&addFromDefaultsDropdown.classList.contains('open')){
+        closeDefaultsDropdown();return;
+      }
+      pendingLoadAction='dropdown';
+      vscodeApi.postMessage({command:'requestFreshDefaultPresets'});
+    });
+    if(addFromDefaultsDropdown) addFromDefaultsDropdown.addEventListener('click',function(e){
+      var btn=e.target&&e.target.closest?e.target.closest('.presets-dropdown-item'):null;
+      if(!btn||btn.classList.contains('added'))return;
+      var idx=parseInt(btn.getAttribute('data-default-idx')||'-1',10);
+      if(idx<0||idx>=defaultPresets.length)return;
+      var items=getPresets(activeSessionId);
+      if(items.length>=MAX_PRESETS){showFeedback(cfgFeedback,'error','已达到 '+MAX_PRESETS+' 条上限');closeDefaultsDropdown();return}
+      items.push(defaultPresets[idx]);
+      setPresets(activeSessionId,items);persistPresetsSoon();renderPresetsConfig();renderPresetsBar();
+      closeDefaultsDropdown();
+      showFeedback(cfgFeedback,'success','已添加：'+defaultPresets[idx]);
+    });
+    document.addEventListener('click',function(e){
+      if(addFromDefaultsDropdown&&addFromDefaultsDropdown.classList.contains('open')){
+        if(addFromDefaultsBtn&&!addFromDefaultsBtn.contains(e.target)&&!addFromDefaultsDropdown.contains(e.target)){
+          closeDefaultsDropdown();
+        }
+      }
+    });
+
     renderPresetsBar();
     renderPresetsConfig();
 
@@ -442,19 +532,34 @@ function getScript(nonce, maxSessions, platform) {
       if(!messagesBySession[sid])messagesBySession[sid]=[];
       messagesBySession[sid].push({type:normalizeMessageType(type),content:content,time:time||new Date()});
       messagesBySession[sid]=trimSessionMessages(messagesBySession[sid]);
-      if(sid===activeSessionId) renderMessages();
+      if(sid===activeSessionId){
+        renderMessages();
+        if(window.__updateChatCount)window.__updateChatCount();
+        if(!window.__isChatCollapsed||!window.__isChatCollapsed()){
+          requestAnimationFrame(function(){if(chatContainer)chatContainer.scrollTop=chatContainer.scrollHeight});
+        }
+        if(window.__isChatCollapsed&&window.__isChatCollapsed()){
+          var toggle=document.getElementById('chatToggle');
+          if(toggle&&!toggle.querySelector('.chat-new-dot')){
+            var dot=document.createElement('span');dot.className='chat-new-dot';
+            toggle.querySelector('.chat-toggle-label').appendChild(dot);
+          }
+        }
+      }
       schedulePersist();
     }
     clearChatBtn.addEventListener('click',function(){
       messagesBySession[activeSessionId]=[];renderMessages();schedulePersist();
+      if(window.__updateChatCount)window.__updateChatCount();
       vscodeApi.postMessage({command:'clearSessionQueue',sessionId:activeSessionId});
     });
 
     var nextStepsBySession = {};
 
+    var nextStepsContainer = document.getElementById('nextStepsContainer');
+
     function renderNextSteps() {
-      var existing = chatContainer.querySelector('.next-steps');
-      if (existing) existing.remove();
+      if (nextStepsContainer) nextStepsContainer.innerHTML = '';
       var suggestions = nextStepsBySession[activeSessionId];
       if (!suggestions || !Array.isArray(suggestions) || suggestions.length === 0) return;
       var div = document.createElement('div');
@@ -471,7 +576,7 @@ function getScript(nonce, maxSessions, platform) {
             '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>' +
           '</button>' +
         '</div>';
-      chatContainer.appendChild(div);
+      if (nextStepsContainer) nextStepsContainer.appendChild(div);
       div.querySelectorAll('.next-step-btn').forEach(function(btn) {
         btn.addEventListener('click', function() {
           var text = btn.textContent.trim();
@@ -481,32 +586,35 @@ function getScript(nonce, maxSessions, platform) {
       });
       var nInput = div.querySelector('.next-steps-input');
       var nSend = div.querySelector('.next-steps-send');
-      if (nSend) nSend.addEventListener('click', function() {
-        var text = (nInput && nInput.value || '').trim();
-        if (!text) return;
-        sendNextStepText(text);
-      });
+      function sendNextStepInputText(){
+        var text=(nInput&&nInput.value||'').trim();
+        if(!text)return;
+        if(msgInput){msgInput.innerHTML='';msgInput.appendChild(document.createTextNode(text));updateComposerEmptyClass()}
+        clearNextSteps();sendMessage();
+      }
+      if (nSend) nSend.addEventListener('click', sendNextStepInputText);
       if (nInput) nInput.addEventListener('keydown', function(e) {
-        if (e.key === 'Enter') {
-          e.preventDefault();
-          var text = nInput.value.trim();
-          if (!text) return;
-          sendNextStepText(text);
-        }
+        if (e.key === 'Enter') { e.preventDefault(); sendNextStepInputText(); }
       });
-      chatContainer.scrollTop = chatContainer.scrollHeight;
     }
 
     function sendNextStepText(text) {
-      nextStepsBySession[activeSessionId] = null;
-      var existing = chatContainer.querySelector('.next-steps');
-      if (existing) existing.remove();
       if (msgInput) {
         msgInput.innerHTML = '';
         msgInput.appendChild(document.createTextNode(text));
         updateComposerEmptyClass();
+        msgInput.focus();
+        var range = document.createRange();
+        range.selectNodeContents(msgInput);
+        range.collapse(false);
+        var sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
       }
-      sendMessage();
+    }
+    function clearNextSteps() {
+      nextStepsBySession[activeSessionId] = null;
+      if (nextStepsContainer) nextStepsContainer.innerHTML = '';
     }
 
     function renderMessages(){
@@ -521,7 +629,6 @@ function getScript(nonce, maxSessions, platform) {
         return '<div class="msg '+m.type+'"><div class="msg-head"><span class="msg-who">'+label+'</span><span class="msg-time">'+formatTime(m.time)+'</span></div><div class="msg-body">'+escapeHtml(m.content)+'</div></div>';
       }).join('');
       renderNextSteps();
-      chatContainer.scrollTop=chatContainer.scrollHeight;
     }
 
     function setLoading(btn,loading){
@@ -705,6 +812,7 @@ function getScript(nonce, maxSessions, platform) {
       var workspacePath=currentWorkspacePath||pathInput.value.trim();
       setLoading(sendBtn,true);showFeedback(sendFeedback,'pending','正在发送...');
       vscodeApi.postMessage({command:'sendMessage',text:text,workspacePath:workspacePath,images:images,sessionId:activeSessionId});
+      clearNextSteps();
     }
 
     // ── message handler ──
@@ -760,6 +868,20 @@ function getScript(nonce, maxSessions, platform) {
             renderPresetsBar();renderPresetsConfig();
           }break;
         case 'defaultPresetsSet':break;
+        case 'freshDefaultPresets':
+          if(Array.isArray(msg.presets)){
+            defaultPresets=msg.presets.filter(function(s){return typeof s==='string'&&s.trim()}).map(function(s){return s.trim().slice(0,200)}).slice(0,MAX_PRESETS);
+          }
+          if(pendingLoadAction==='load'){
+            pendingLoadAction=null;
+            if(defaultPresets.length===0){showFeedback(cfgFeedback,'error','没有全局默认指令，请先「设为默认」');break}
+            setPresets(activeSessionId,defaultPresets.slice());persistPresetsSoon();renderPresetsConfig();renderPresetsBar();
+            showFeedback(cfgFeedback,'success','已载入 '+defaultPresets.length+' 条默认指令');
+          }else if(pendingLoadAction==='dropdown'){
+            pendingLoadAction=null;
+            renderDefaultsDropdown();
+          }else{pendingLoadAction=null}
+          break;
         case 'restorePresets':
           if(msg.presets&&typeof msg.presets==='object'){
             Object.keys(msg.presets).forEach(function(k){

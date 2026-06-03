@@ -6,7 +6,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { readFileSync, writeFileSync, mkdirSync, existsSync, renameSync, appendFileSync, unlinkSync, readdirSync } from "fs";
+import { readFileSync, writeFileSync, mkdirSync, existsSync, renameSync, appendFileSync, unlinkSync, readdirSync, statSync } from "fs";
 import { join, resolve } from "path";
 import { homedir } from "os";
 import { randomBytes, createHash } from "crypto";
@@ -131,6 +131,7 @@ function scanMessageFiles() {
 /** Read and consume the oldest individual message file; returns parsed message or null */
 function consumeOldestMessageFile() {
   const files = scanMessageFiles();
+  const now = Date.now();
   for (const file of files) {
     const filePath = join(queueDir, file);
     try {
@@ -138,7 +139,17 @@ function consumeOldestMessageFile() {
       const msg = JSON.parse(raw);
       try { unlinkSync(filePath); } catch {}
       return msg;
-    } catch {
+    } catch (err) {
+      let fileAgeMs = Infinity;
+      try {
+        const stat = statSync(filePath);
+        fileAgeMs = now - stat.mtimeMs;
+      } catch {}
+      if (fileAgeMs < 5000) {
+        // File may still be written; skip for now, retry on next poll
+        continue;
+      }
+      logError("consumeOldestMessageFile", `dropping corrupt file ${file} (age=${Math.round(fileAgeMs)}ms): ${err}`);
       try { unlinkSync(filePath); } catch {}
     }
   }

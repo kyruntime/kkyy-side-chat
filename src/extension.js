@@ -344,8 +344,15 @@ check_messages()
                 if (savedPresets && typeof savedPresets === "object") {
                     webviewView.webview.postMessage({ command: "restorePresets", presets: savedPresets });
                 }
-                const savedDefaultPresets = context.workspaceState.get(GLOBAL_STATE_DEFAULT_PRESETS_KEY);
-                if (Array.isArray(savedDefaultPresets)) {
+                let savedDefaultPresets = context.globalState.get(GLOBAL_STATE_DEFAULT_PRESETS_KEY);
+                if (!Array.isArray(savedDefaultPresets) || savedDefaultPresets.length === 0) {
+                    const legacy = context.workspaceState.get(GLOBAL_STATE_DEFAULT_PRESETS_KEY);
+                    if (Array.isArray(legacy) && legacy.length > 0) {
+                        savedDefaultPresets = legacy;
+                        void context.globalState.update(GLOBAL_STATE_DEFAULT_PRESETS_KEY, legacy);
+                    }
+                }
+                if (Array.isArray(savedDefaultPresets) && savedDefaultPresets.length > 0) {
                     webviewView.webview.postMessage({ command: "restoreDefaultPresets", presets: savedDefaultPresets });
                 }
             }, 50);
@@ -558,15 +565,21 @@ check_messages()
                 if (cmd === "persistDefaultPresets") {
                     const raw = message.presets;
                     if (!Array.isArray(raw)) {
-                        void context.workspaceState.update(GLOBAL_STATE_DEFAULT_PRESETS_KEY, []);
+                        void context.globalState.update(GLOBAL_STATE_DEFAULT_PRESETS_KEY, []);
                         return;
                     }
                     const items = raw
                         .filter((s) => typeof s === "string" && s.trim())
                         .map((s) => s.trim().slice(0, 200))
                         .slice(0, 10);
-                    void context.workspaceState.update(GLOBAL_STATE_DEFAULT_PRESETS_KEY, items);
+                    void context.globalState.update(GLOBAL_STATE_DEFAULT_PRESETS_KEY, items);
                     webviewView.webview.postMessage({ command: "defaultPresetsSet", ok: true });
+                    return;
+                }
+                if (cmd === "requestFreshDefaultPresets") {
+                    const saved = context.globalState.get(GLOBAL_STATE_DEFAULT_PRESETS_KEY);
+                    const presets = Array.isArray(saved) ? saved : [];
+                    webviewView.webview.postMessage({ command: "freshDefaultPresets", presets });
                     return;
                 }
                 if (cmd === "persistWorkspacePath") {
@@ -712,7 +725,15 @@ check_messages()
                         const ts = String(Date.now()).padStart(15, "0");
                         const rand = Math.random().toString(36).slice(2, 6);
                         const msgFile = path.join(sessionDir, `msg-${ts}-${rand}.json`);
-                        fs.writeFileSync(msgFile, JSON.stringify(entry, null, 2), "utf-8");
+                        const tmpFile = msgFile + ".tmp";
+                        try {
+                            fs.writeFileSync(tmpFile, JSON.stringify(entry, null, 2), "utf-8");
+                            fs.renameSync(tmpFile, msgFile);
+                        }
+                        catch (writeErr) {
+                            try { fs.unlinkSync(tmpFile); } catch { }
+                            throw writeErr;
+                        }
                         markSessionQueued(sessionId);
                         webviewView.webview.postMessage({
                             command: "sendResult",
